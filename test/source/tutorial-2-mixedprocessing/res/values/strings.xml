@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OCV T2 Mixed Processing</string>
+    <string name="DeepCamera">Deep camera</string>
+    <string name="OpenCamera">Open</string>
+    <string name="CloseCamera">Close</string>
+</resources>
