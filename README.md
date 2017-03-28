@@ -1,8 +1,13 @@
-1、The lib_armeabi_v7a directory includes libraries, copy to /system/lib/ before run any test
 
-2、The test directory includes sample program,
-   The sub directory test/bin/ includes executable files which contains a console application and an apk 
-   The sub directory test/source includes source code of console application and apk
+1、The lib directory includes libraries for android platform, armv7 is the only cpu arch supported now. 
+   copy the library to /system/lib/ before run any sample.
+
+2、The sample directory includes a sample,
+   The sub directory binary_for_ARMV7 includes executable files which contains a console application and an apk for armv7,
+   The sub directory Simple_FetchFrame/ includes source code of console application,
+   The sub directory Simple_FetchFrame_Apk/ includes source code of an apk.
 
 
-Note: change permission of usb device first if application doesn't run as root
+Note: 1、Change permission of usb device first if application doesn't run as root
+      2、The sample apk is developed base on OpenCV, download OpenCV SDK for android is necessary before compiling apk.
+      3、Only run the apk which in binary_for_ARMV7 directory for testing, please install OpenCV_2.4.9_Manager_2.18_armeabi.apk together.
