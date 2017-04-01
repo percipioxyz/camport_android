@@ -36,7 +36,7 @@
 									<listOptionValue builtIn="false" value="D:/android-ndk-r10b/sources/cxx-stl/gnu-libstdc++/4.8/includ"/>
 									<listOptionValue builtIn="false" value="D:/android-ndk-r10b/toolchains/arm-linux-androideabi-4.6/prebuilt/windows-x86_64/lib/gcc/arm-linux-androideabi/4.6/include"/>
 								</option>
-								<option id="org.eclipse.cdt.build.core.settings.holder.symbols.262145217" superClass="org.eclipse.cdt.build.core.settings.holder.symbols" valueType="definedSymbols">
+								<option id="org.eclipse.cdt.build.core.settings.holder.symbols.262145217" name="Symbols" superClass="org.eclipse.cdt.build.core.settings.holder.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="ANDROID=1"/>
 								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1470189286" languageId="org.eclipse.cdt.core.assembly" languageName="Assembly" sourceContentType="org.eclipse.cdt.core.asmSource" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
