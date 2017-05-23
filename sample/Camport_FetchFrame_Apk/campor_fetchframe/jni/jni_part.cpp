@@ -72,10 +72,12 @@ void frameHandler(TY_FRAME_DATA* frame, void* userdata, jlong mat)
         }
         // get & show RGB
         if(frame->image[i].componentID == TY_COMPONENT_RGB_CAM){
+        	/*
             cv::Mat rgb(frame->image[i].height, frame->image[i].width
                     , CV_8UC3, frame->image[i].buffer);
             cv::Mat bgr;
             cv::cvtColor(rgb, bgr, cv::COLOR_RGB2BGR);
+            */
             //cv::imshow("bgr", bgr);
         }
     }
