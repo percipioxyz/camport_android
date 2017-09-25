@@ -24,6 +24,7 @@
 #define TY_API_H_
 
 #include <stddef.h>
+#include <stdlib.h>
 
 #ifdef WIN32
 #  ifndef _WIN32
@@ -58,8 +59,6 @@
 #  define bool  _Bool
 #  define true  1
 #  define false 0
-# else
-#  define _Bool bool
 # endif
 #endif
 
@@ -98,7 +97,7 @@
 //  Definitions
 //------------------------------------------------------------------------------
 #define TY_LIB_VERSION_MAJOR       2
-#define TY_LIB_VERSION_MINOR       2
+#define TY_LIB_VERSION_MINOR       5
 #define TY_LIB_VERSION_PATCH       0
 
 
@@ -151,6 +150,7 @@ typedef enum TY_DEVICE_COMPONENT_LIST
     TY_COMPONENT_RGB_CAM_RIGHT  = 0x00200000, ///< Right RGB camera
     TY_COMPONENT_LASER          = 0x00400000, ///< Laser
     TY_COMPONENT_IMU            = 0x00800000, ///< Inertial Measurement Unit
+    TY_COMPONENT_BRIGHT_HISTO   = 0x01000000, ///< virtual component for brightness histogram of ir 
 
     TY_COMPONENT_RGB_CAM        = TY_COMPONENT_RGB_CAM_LEFT /// Some device has only one RGB camera, map it to left
 }TY_DEVICE_COMPONENT_LIST;
@@ -196,13 +196,15 @@ typedef enum TY_FEATURE_ID_LIST
     TY_INT_FRAME_PER_TRIGGER    = 0x202 | TY_FEATURE_INT,  ///< Number of frames captured per trigger
 
     TY_BOOL_AUTO_EXPOSURE       = 0x300 | TY_FEATURE_BOOL, ///< Auto exposure switch
-    TY_INT_EXPOSURE_TIME        = 0x301 | TY_FEATURE_INT,  ///< Exposure time in microseconds
+    TY_INT_EXPOSURE_TIME        = 0x301 | TY_FEATURE_INT,  ///< Exposure time in percentage
     TY_BOOL_AUTO_GAIN           = 0x302 | TY_FEATURE_BOOL, ///< Auto gain switch
     TY_INT_GAIN                 = 0x303 | TY_FEATURE_INT,  ///< Gain
+    TY_BOOL_AUTO_AWB            = 0x304 | TY_FEATURE_BOOL, ///< Auto white balance
 
     TY_INT_LASER_POWER          = 0x500 | TY_FEATURE_INT,  ///< Laser power level 
 
     TY_BOOL_UNDISTORTION        = 0x510 | TY_FEATURE_BOOL, ///< Output undistorted image
+    TY_BOOL_BRIGHTNESS_HISTOGRAM    = 0x511 | TY_FEATURE_BOOL, ///< Output bright histogram 
 
     TY_INT_R_GAIN               = 0x520 | TY_FEATURE_INT,  ///< Gain of R channel
     TY_INT_G_GAIN               = 0x521 | TY_FEATURE_INT,  ///< Gain of G channel
@@ -214,9 +216,9 @@ typedef int32_t TY_FEATURE_ID;
 
 typedef enum TY_IMAGE_MODE_LIST
 {
-    TY_IMAGE_MODE_320x240       = (320<<12)+240,
-    TY_IMAGE_MODE_640x480       = (640<<12)+480,
-    TY_IMAGE_MODE_1280x960      = (1280<<12)+960,
+    TY_IMAGE_MODE_320x240       = (320<<12)+240, ///< 1310960
+    TY_IMAGE_MODE_640x480       = (640<<12)+480, ///< 2621920
+    TY_IMAGE_MODE_1280x960      = (1280<<12)+960,///< 5243840
 }TY_IMAGE_MODE_LIST;
 typedef int32_t TY_IMAGE_MODE;
 
@@ -272,6 +274,7 @@ typedef enum TY_PIXEL_FORMAT_LIST
     TY_PIXEL_FORMAT_MONO        = (TY_PIXEL_MONO    | TY_PIXEL_8BIT  | 0x0000), //0x10080000
     TY_PIXEL_FORMAT_RGB         = (TY_PIXEL_COLOR   | TY_PIXEL_24BIT | 0x0010), //0x20180010
     TY_PIXEL_FORMAT_YUV422      = (TY_PIXEL_COLOR   | TY_PIXEL_16BIT | 0x0011), //0x20100011, YVYU
+    TY_PIXEL_FORMAT_YVYU        =  TY_PIXEL_FORMAT_YUV422                     , //0x20100011, YVYU
     TY_PIXEL_FORMAT_YUYV        = (TY_PIXEL_COLOR   | TY_PIXEL_16BIT | 0x0012), //0x20100012, YUYV
     TY_PIXEL_FORMAT_DEPTH16     = (TY_PIXEL_DEPTH   | TY_PIXEL_16BIT | 0x0020), //0x30100020
     TY_PIXEL_FORMAT_FPOINT3D    = (TY_PIXEL_POINT3D | TY_PIXEL_96BIT | 0x0030), //0x40600030
@@ -373,9 +376,10 @@ typedef struct
     float data[4*4];
 }TY_CAMERA_EXTRINSIC;
 
+///camera distortion parameters
 typedef struct
 {
-    float data[12];
+    float data[12];///<k1,k2,p1,p2,k3,k4,k5,k6,s1,s2,s3,s4
 }TY_CAMERA_DISTORTION;
 
 
@@ -510,6 +514,14 @@ TY_CAPI TYOpenDeviceWithIP        (const char* IP, TY_DEV_HANDLE* deviceHandle);
 TY_CAPI TYCloseDevice             (TY_DEV_HANDLE hDevice);
 
 
+
+/// @brief Get base info of the open device.
+/// @param  [in]  hDevice       Device handle.
+/// @param  [out] info          Base info out.
+/// @retval TY_STATUS_OK        Succeed.
+/// @retval TY_STATUS_INVALID_HANDLE    Invalid device handle.
+/// @retval TY_STATUS_NULL_POINTER      componentIDs is NULL.
+TY_CAPI TYGetDeviceInfo           (TY_DEV_HANDLE hDevice, TY_DEVICE_BASE_INFO* info);
 
 /// @brief Get all components IDs.
 /// @param  [in]  hDevice       Device handle.
@@ -941,7 +953,7 @@ static inline TY_STATUS TYInitLib(void)
     TY_VERSION_INFO soVersion;
     TYLibVersion(&soVersion);
     if(!(soVersion.major == TY_LIB_VERSION_MAJOR && soVersion.minor >= TY_LIB_VERSION_MINOR)){
-        *(int*)0 = 0;   // generate segment fault directly
+        abort();   // generate fault directly
     }
     return _TYInitLib();
 }
@@ -962,6 +974,7 @@ TY_CAPI             TYOpenDevice              (const char* deviceID, TY_DEV_HAND
 TY_CAPI             TYOpenDeviceWithIP        (const char* IP, TY_DEV_HANDLE* outDeviceHandle);
 TY_CAPI             TYCloseDevice             (TY_DEV_HANDLE hDevice);
 
+TY_CAPI             TYGetDeviceInfo           (TY_DEV_HANDLE hDevice, TY_DEVICE_BASE_INFO* info);
 TY_CAPI             TYGetComponentIDs         (TY_DEV_HANDLE hDevice, int32_t* componentIDs);
 TY_CAPI             TYGetEnabledComponents    (TY_DEV_HANDLE hDevice, int32_t* componentIDs);
 TY_CAPI             TYEnableComponents        (TY_DEV_HANDLE hDevice, int32_t componentIDs);

@@ -49,9 +49,7 @@ obj/local/armeabi/objs-debug/mixed_sample/jni_part.o: jni/jni_part.cpp \
  jni/percipio_camport.h \
  D:/android-ndk-r10b/sources/cxx-stl/gnu-libstdc++/4.8/include/cassert \
  D:/android-ndk-r10b/sources/cxx-stl/gnu-libstdc++/4.8/include/fstream \
- jni/TY_API.h \
- D:/android-ndk-r10b/platforms/android-19/arch-arm/usr/include/android/log.h \
- jni/percipio_camport_impl.hpp \
+ jni/TY_API.h jni/percipio_camport_impl.hpp \
  D:/android-ndk-r10b/sources/cxx-stl/gnu-libstdc++/4.8/include/cstring \
  ../../sdk/native/jni/include/opencv2/opencv.hpp \
  ../../sdk/native/jni/include/opencv2/imgproc/imgproc_c.h \
@@ -79,7 +77,8 @@ obj/local/armeabi/objs-debug/mixed_sample/jni_part.o: jni/jni_part.cpp \
  D:/android-ndk-r10b/platforms/android-19/arch-arm/usr/include/sys/sysconf.h \
  D:/android-ndk-r10b/platforms/android-19/arch-arm/usr/include/linux/capability.h \
  D:/android-ndk-r10b/platforms/android-19/arch-arm/usr/include/pathconf.h \
- jni/DepthRender.hpp jni/PointCloudViewer.hpp
+ jni/DepthRender.hpp jni/PointCloudViewer.hpp \
+ D:/android-ndk-r10b/platforms/android-19/arch-arm/usr/include/android/log.h
 
 D:/android-ndk-r10b/platforms/android-19/arch-arm/usr/include/jni.h:
 
@@ -183,8 +182,6 @@ D:/android-ndk-r10b/sources/cxx-stl/gnu-libstdc++/4.8/include/fstream:
 
 jni/TY_API.h:
 
-D:/android-ndk-r10b/platforms/android-19/arch-arm/usr/include/android/log.h:
-
 jni/percipio_camport_impl.hpp:
 
 D:/android-ndk-r10b/sources/cxx-stl/gnu-libstdc++/4.8/include/cstring:
@@ -246,3 +243,5 @@ D:/android-ndk-r10b/platforms/android-19/arch-arm/usr/include/pathconf.h:
 jni/DepthRender.hpp:
 
 jni/PointCloudViewer.hpp:
+
+D:/android-ndk-r10b/platforms/android-19/arch-arm/usr/include/android/log.h:
