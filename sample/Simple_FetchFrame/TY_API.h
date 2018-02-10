@@ -7,7 +7,7 @@
 
 // README:
 //------------------------------------------------------------------------------
-//   
+//
 // Depth camera, called "device", consists of several components. Each component
 // is a hardware module or virtual module, such as RGB sensor, depth sensor.
 // Each component has its own features, such as image resolution, pixel format.
@@ -17,13 +17,14 @@
 //
 // Each frame consists of several images. Normally, all the images have identical
 // timestamp, means they are captured at the same time.
-// 
+//
 //------------------------------------------------------------------------------
 
 #ifndef TY_API_H_
 #define TY_API_H_
 
 #include <stddef.h>
+#include <stdlib.h>
 
 #ifdef WIN32
 #  ifndef _WIN32
@@ -32,7 +33,7 @@
 #endif
 
 #ifdef _WIN32
-# ifndef _STDINT_H 
+# ifndef _STDINT_H
 #  if defined(_MSC_VER) && _MSC_VER < 1600
     typedef __int8            int8_t;
     typedef __int16           int16_t;
@@ -45,7 +46,7 @@
 #  else
 #   include <stdint.h>
 #  endif
-# endif 
+# endif
 #else
 # include <stdint.h>
 #endif
@@ -58,15 +59,18 @@
 #  define bool  _Bool
 #  define true  1
 #  define false 0
-# else
-#  define _Bool bool
 # endif
 #endif
 
 #ifdef _WIN32
 #  include <Windows.h>
+#ifdef TY_WIN32_BUILD_STATIC
+#  define TY_DLLIMPORT
+#  define TY_DLLEXPORT
+#else
 #  define TY_DLLIMPORT      __declspec(dllimport)
 #  define TY_DLLEXPORT      __declspec(dllexport)
+#endif
 #  define TY_STDC           __stdcall
 #  define TY_CDEC           __cdecl
 #else
@@ -76,8 +80,8 @@
 #    define TY_STDC         __attribute__((stdcall))
 #    define TY_CDEC         __attribute__((cdecl))
 #  else
-#    define TY_STDC 
-#    define TY_CDEC 
+#    define TY_STDC
+#    define TY_CDEC
 #  endif
 #endif
 
@@ -98,8 +102,8 @@
 //  Definitions
 //------------------------------------------------------------------------------
 #define TY_LIB_VERSION_MAJOR       2
-#define TY_LIB_VERSION_MINOR       0
-#define TY_LIB_VERSION_PATCH       0
+#define TY_LIB_VERSION_MINOR       6
+#define TY_LIB_VERSION_PATCH       3
 
 
 //------------------------------------------------------------------------------
@@ -126,10 +130,17 @@ typedef enum TY_STATUS_LIST
     TY_STATUS_BUSY              = -1016,
     TY_STATUS_IDLE              = -1017,
     TY_STATUS_NO_DATA           = -1018,
-    TY_STATUS_NULL_POINTER      = -1020
+    TY_STATUS_NO_BUFFER         = -1019,
+    TY_STATUS_NULL_POINTER      = -1020,
+    TY_STATUS_READONLY_FEATURE  = -1021
 }TY_STATUS_LIST;
 typedef int32_t TY_STATUS;
 
+typedef enum TY_EVENT_LIST
+{
+    TY_EVENT_DEVICE_OFFLINE     = -2001,
+}TY_ENENT_LIST;
+typedef int32_t TY_EVENT;
 
 //------------------------------------------------------------------------------
 //  Device Handle
@@ -151,6 +162,7 @@ typedef enum TY_DEVICE_COMPONENT_LIST
     TY_COMPONENT_RGB_CAM_RIGHT  = 0x00200000, ///< Right RGB camera
     TY_COMPONENT_LASER          = 0x00400000, ///< Laser
     TY_COMPONENT_IMU            = 0x00800000, ///< Inertial Measurement Unit
+    TY_COMPONENT_BRIGHT_HISTO   = 0x01000000, ///< virtual component for brightness histogram of ir
 
     TY_COMPONENT_RGB_CAM        = TY_COMPONENT_RGB_CAM_LEFT /// Some device has only one RGB camera, map it to left
 }TY_DEVICE_COMPONENT_LIST;
@@ -179,6 +191,7 @@ typedef enum TY_FEATURE_ID_LIST
     TY_STRUCT_EXTRINSIC_TO_LEFT_IR  = 0x001 | TY_FEATURE_STRUCT, ///< extrinsic from current component to left IR, see TY_CAMERA_EXTRINSIC
     TY_STRUCT_EXTRINSIC_TO_LEFT_RGB = 0x002 | TY_FEATURE_STRUCT, ///< extrinsic from current component to left RGB, see TY_CAMERA_EXTRINSIC
     TY_STRUCT_NET_INFO              = 0x005 | TY_FEATURE_STRUCT, ///< see TY_DEVICE_NET_INFO
+    TY_STRUCT_CAM_DISTORTION        = 0x006 | TY_FEATURE_STRUCT, ///< see TY_CAMERA_DISTORTION
 
     TY_INT_WIDTH_MAX            = 0x100 | TY_FEATURE_INT,
     TY_INT_HEIGHT_MAX           = 0x101 | TY_FEATURE_INT,
@@ -195,17 +208,22 @@ typedef enum TY_FEATURE_ID_LIST
     TY_INT_FRAME_PER_TRIGGER    = 0x202 | TY_FEATURE_INT,  ///< Number of frames captured per trigger
 
     TY_BOOL_AUTO_EXPOSURE       = 0x300 | TY_FEATURE_BOOL, ///< Auto exposure switch
-    TY_INT_EXPOSURE_TIME        = 0x301 | TY_FEATURE_INT,  ///< Exposure time in microseconds
+    TY_INT_EXPOSURE_TIME        = 0x301 | TY_FEATURE_INT,  ///< Exposure time in percentage
     TY_BOOL_AUTO_GAIN           = 0x302 | TY_FEATURE_BOOL, ///< Auto gain switch
     TY_INT_GAIN                 = 0x303 | TY_FEATURE_INT,  ///< Gain
+    TY_BOOL_AUTO_AWB            = 0x304 | TY_FEATURE_BOOL, ///< Auto white balance
 
-    TY_INT_LASER_POWER          = 0x500 | TY_FEATURE_INT,  ///< Laser power level 
+    TY_INT_LASER_POWER          = 0x500 | TY_FEATURE_INT,  ///< Laser power level
+    TY_BOOL_LASER_AUTO_CTRL     = 0x501 | TY_FEATURE_BOOL,  ///< Laser auto ctrl
 
     TY_BOOL_UNDISTORTION        = 0x510 | TY_FEATURE_BOOL, ///< Output undistorted image
+    TY_BOOL_BRIGHTNESS_HISTOGRAM    = 0x511 | TY_FEATURE_BOOL, ///< Output bright histogram
 
     TY_INT_R_GAIN               = 0x520 | TY_FEATURE_INT,  ///< Gain of R channel
     TY_INT_G_GAIN               = 0x521 | TY_FEATURE_INT,  ///< Gain of G channel
     TY_INT_B_GAIN               = 0x522 | TY_FEATURE_INT,  ///< Gain of B channel
+
+    TY_STRUCT_WORK_MODE      = 0x523 | TY_FEATURE_STRUCT,  ///< mode of trigger
 
 }TY_FEATURE_ID_LIST;
 typedef int32_t TY_FEATURE_ID;
@@ -213,9 +231,11 @@ typedef int32_t TY_FEATURE_ID;
 
 typedef enum TY_IMAGE_MODE_LIST
 {
-    TY_IMAGE_MODE_320x240       = (320<<12)+240,
-    TY_IMAGE_MODE_640x480       = (640<<12)+480,
-    TY_IMAGE_MODE_1280x960      = (1280<<12)+960,
+    TY_IMAGE_MODE_160x120       = (160<<12)+120, ///< 655480 
+    TY_IMAGE_MODE_320x240       = (320<<12)+240, ///< 1310960
+    TY_IMAGE_MODE_640x480       = (640<<12)+480, ///< 2621920
+    TY_IMAGE_MODE_1280x960      = (1280<<12)+960,///< 5243840
+    TY_IMAGE_MODE_2592x1944     = (2592<<12)+1944,///< 10618776
 }TY_IMAGE_MODE_LIST;
 typedef int32_t TY_IMAGE_MODE;
 
@@ -263,19 +283,29 @@ typedef enum TY_PIXEL_BITS_LIST{
     TY_PIXEL_32BIT              = 0x00200000,
     TY_PIXEL_96BIT              = 0x00600000,
 }TY_PIXEL_BITS_LIST;
-                                             
+
 
 typedef enum TY_PIXEL_FORMAT_LIST
 {
     TY_PIXEL_FORMAT_UNDEFINED   = 0,
     TY_PIXEL_FORMAT_MONO        = (TY_PIXEL_MONO    | TY_PIXEL_8BIT  | 0x0000), //0x10080000
     TY_PIXEL_FORMAT_RGB         = (TY_PIXEL_COLOR   | TY_PIXEL_24BIT | 0x0010), //0x20180010
-    TY_PIXEL_FORMAT_YUV422      = (TY_PIXEL_COLOR   | TY_PIXEL_16BIT | 0x0011), //0x20100011
+    TY_PIXEL_FORMAT_YUV422      = (TY_PIXEL_COLOR   | TY_PIXEL_16BIT | 0x0011), //0x20100011, YVYU
+    TY_PIXEL_FORMAT_YVYU        =  TY_PIXEL_FORMAT_YUV422                     , //0x20100011, YVYU
+    TY_PIXEL_FORMAT_YUYV        = (TY_PIXEL_COLOR   | TY_PIXEL_16BIT | 0x0012), //0x20100012, YUYV
+    TY_PIXEL_FORMAT_JPEG        = (TY_PIXEL_COLOR   | TY_PIXEL_24BIT | 0x0013), //0x20180013, JPEG
     TY_PIXEL_FORMAT_DEPTH16     = (TY_PIXEL_DEPTH   | TY_PIXEL_16BIT | 0x0020), //0x30100020
     TY_PIXEL_FORMAT_FPOINT3D    = (TY_PIXEL_POINT3D | TY_PIXEL_96BIT | 0x0030), //0x40600030
 }TY_PIXEL_FORMAT_LIST;
 typedef int32_t TY_PIXEL_FORMAT;
 
+typedef enum TY_TRIGGER_MODE_LIST
+{
+    TY_TRIGGER_MODE_CONTINUES        = 0, //not trigger mode, continues mode
+    TY_TRIGGER_MODE_TRIG_SLAVE       = 1, //slave mode
+    TY_TRIGGER_MODE_M_SIG            = 2, //master mode 1, trigger once got a trigger cmd
+    TY_TRIGGER_MODE_M_PER            = 3, //master mode 2, trigger period, with const frame rate
+}TY_TRIGGER_MODE_LIST;
 
 //------------------------------------------------------------------------------
 //  Struct
@@ -301,7 +331,7 @@ typedef struct TY_DEVICE_BASE_INFO
 {
     TY_INTERFACE        devInterface;       ///< interface, see TY_INTERFACE_LIST
     char                id[32];
-    char                vendorName[32];     
+    char                vendorName[32];
     char                modelName[32];
     TY_VERSION_INFO     hardwareVersion;
     TY_VERSION_INFO     firmwareVersion;
@@ -314,7 +344,8 @@ typedef struct TY_FEATURE_INFO
 {
     bool            isValid;            ///< true if feature exists, false otherwise
     int8_t          accessMode;         ///< feature access mode, see TY_ACCESS_MODE_LIST
-    char            reserved0[2];
+    bool            writableAtRun;      ///< feature can be written while capturing
+    char            reserved0[1];
     TY_COMPONENT_ID componentID;
     TY_FEATURE_ID   featureID;
     char            name[32];
@@ -370,13 +401,25 @@ typedef struct
     float data[4*4];
 }TY_CAMERA_EXTRINSIC;
 
+///camera distortion parameters
+typedef struct
+{
+    float data[12];///<k1,k2,p1,p2,k3,k4,k5,k6,s1,s2,s3,s4
+}TY_CAMERA_DISTORTION;
+
+typedef struct TY_TRIGGER_MODE
+{
+    int16_t  mode;
+    int8_t   fps;
+}TY_TRIGGER_MODE;
+
 
 //------------------------------------------------------------------------------
 //  Buffer & Callback
 //------------------------------------------------------------------------------
 typedef struct TY_IMAGE_DATA
 {
-    int32_t timestamp;              ///< Timestamp in milliseconds
+    uint64_t timestamp;             ///< Timestamp in microseconds
     int32_t imageIndex;             ///< image index used in trigger mode
     int32_t status;                 ///< Status of this buffer
     int32_t componentID;            ///< Where current data come from
@@ -392,14 +435,21 @@ typedef struct TY_IMAGE_DATA
 typedef struct TY_FRAME_DATA
 {
     void*           userBuffer;     ///< Pointer to user enqueued buffer, user should enqueue this buffer in the end of callback
-    int32_t         bufferSize;     ///< Size of userBuffer 
+    int32_t         bufferSize;     ///< Size of userBuffer
     int32_t         validCount;     ///< Number of valid data
     int32_t         reserved[6];    ///< Reserved
     TY_IMAGE_DATA   image[10];      ///< Buffer data, max to 10 images per frame, each buffer data could be an image or something else.
 }TY_FRAME_DATA;
 
-
 typedef void (*TY_FRAME_CALLBACK) (TY_FRAME_DATA*, void* userdata);
+
+
+typedef struct TY_EVENT_INFO
+{
+    TY_EVENT        eventId;
+}TY_EVENT_INFO;
+
+typedef void (*TY_EVENT_CALLBACK)(TY_EVENT_INFO*, void* userdata);
 
 
 //------------------------------------------------------------------------------
@@ -437,7 +487,7 @@ TY_EXTC TY_EXPORT const char* TY_STDC TYErrorString (TY_STATUS errorID);
 ///   We make this function to be static inline, because we do a version check here.
 ///   Some user may use the mismatched header file and dynamic library, and
 ///   that's quite difficult to locate the error.
-///   
+///
 /// @retval TY_STATUS_OK        Succeed.
 /// @retval TY_STATUS_ERROR     Has been inited.
 static inline TY_STATUS TYInitLib (void);
@@ -501,7 +551,21 @@ TY_CAPI TYOpenDeviceWithIP        (const char* IP, TY_DEV_HANDLE* deviceHandle);
 /// @retval TY_STATUS_IDLE              Device has been closed.
 TY_CAPI TYCloseDevice             (TY_DEV_HANDLE hDevice);
 
+/// @brief Enable developer mode by device handle.
+/// @param  [in]  hDevice       Device handle.
+/// @retval TY_STATUS_OK        Succeed.
+/// @retval TY_STATUS_INVALID_HANDLE    Invalid device handle.
+/// @retval TY_STATUS_DEVICE_ERROR      Enter developer mode failed.
+TY_CAPI TYEnterDeveloperMode      (TY_DEV_HANDLE hDevice);
 
+
+/// @brief Get base info of the open device.
+/// @param  [in]  hDevice       Device handle.
+/// @param  [out] info          Base info out.
+/// @retval TY_STATUS_OK        Succeed.
+/// @retval TY_STATUS_INVALID_HANDLE    Invalid device handle.
+/// @retval TY_STATUS_NULL_POINTER      componentIDs is NULL.
+TY_CAPI TYGetDeviceInfo           (TY_DEV_HANDLE hDevice, TY_DEVICE_BASE_INFO* info);
 
 /// @brief Get all components IDs.
 /// @param  [in]  hDevice       Device handle.
@@ -610,6 +674,15 @@ TY_CAPI TYSendSoftTrigger         (TY_DEV_HANDLE hDevice);
 /// @retval TY_STATUS_INVALID_HANDLE    Invalid device handle.
 /// @retval TY_STATUS_BUSY      Device is capturing.
 TY_CAPI TYRegisterCallback        (TY_DEV_HANDLE hDevice, TY_FRAME_CALLBACK callback, void* userdata);
+
+/// @brief Register device status callback. Register NULL to clean callback.
+/// @param  [in]  hDevice       Device handle.
+/// @param  [in]  callback      Callback function.
+/// @param  [in]  userdata      User private data.
+/// @retval TY_STATUS_OK        Succeed.
+/// @retval TY_STATUS_INVALID_HANDLE    Invalid device handle.
+/// @retval TY_STATUS_BUSY      Device is capturing.
+TY_CAPI TYRegisterEventCallback   (TY_DEV_HANDLE hDevice, TY_EVENT_CALLBACK callback, void* userdata);
 
 /// @brief Fetch one frame.
 /// @param  [in]  hDevice       Device handle.
@@ -923,6 +996,22 @@ TY_CAPI TYDepthToWorld            (TY_DEV_HANDLE hDevice, const TY_VECT_3F* dept
 /// @retval TY_STATUS_INVALID_PARAMETER worldPaddingBytes is not 4x.
 TY_CAPI TYWorldToDepth            (TY_DEV_HANDLE hDevice, const TY_VECT_3F* world, TY_VECT_3F* depth, int32_t worldPaddingBytes, int32_t pointCount);
 
+/// @brief Correct image for lens distortion
+/// Format of source image data should be  TY_PIXEL_FORMAT_MONO or  TY_PIXEL_FORMAT_RGB
+/// Output buffer is allocated by caller.
+/// For IR image undistortion, enable TY_BOOL_UNDISTORTION  to get better performance.
+///
+/// @param  [in]  cameraIntrinsic       input image camera intrinsic parameters
+/// @param  [in]  cameraDistortion      input image camera distortion parameters
+/// @param  [in]  cameraNewIntrinsic    output image camera intrinsic , cameraIntrinsic will be used if is NULL
+/// @param  [in]  srcImage              input image buffer
+/// @param  [out] dstImage              Output image buffer
+///
+/// @retval TY_STATUS_OK                Succeed.
+/// @retval TY_STATUS_NULL_POINTER      buffer is NULL.
+/// @retval TY_STATUS_INVALID_PARAMETER parameter is invalid.
+/// @retval TY_STATUS_ERROR             internal error
+TY_CAPI             TYUndistortImage          (const TY_CAMERA_INTRINSIC *cameraIntrinsic, const TY_CAMERA_DISTORTION* cameraDistortion,const TY_CAMERA_INTRINSIC *cameraNewIntrinsic,const TY_IMAGE_DATA *srcImage, TY_IMAGE_DATA *dstImage);
 
 //------------------------------------------------------------------------------
 //  Version check
@@ -933,7 +1022,7 @@ static inline TY_STATUS TYInitLib(void)
     TY_VERSION_INFO soVersion;
     TYLibVersion(&soVersion);
     if(!(soVersion.major == TY_LIB_VERSION_MAJOR && soVersion.minor >= TY_LIB_VERSION_MINOR)){
-        *(int*)0 = 0;   // generate segment fault directly
+        abort();   // generate fault directly
     }
     return _TYInitLib();
 }
@@ -946,14 +1035,16 @@ TY_EXTC TY_EXPORT const char* TY_STDC TYErrorString (TY_STATUS errorID);
 inline TY_STATUS    TYInitLib                 (void);
 TY_CAPI             TYDeinitLib               (void);
 TY_CAPI             TYLibVersion              (TY_VERSION_INFO* version);
-
+TY_EXTC TY_EXPORT   const char*         TYGetFirmwareVer          (const char* deviceID);
 TY_CAPI             TYGetDeviceNumber         (int32_t* deviceNumber);
 TY_CAPI             TYGetDeviceList           (TY_DEVICE_BASE_INFO* deviceInfos, int32_t bufferCount, int32_t* filledDeviceCount);
 
 TY_CAPI             TYOpenDevice              (const char* deviceID, TY_DEV_HANDLE* outDeviceHandle);
 TY_CAPI             TYOpenDeviceWithIP        (const char* IP, TY_DEV_HANDLE* outDeviceHandle);
 TY_CAPI             TYCloseDevice             (TY_DEV_HANDLE hDevice);
+TY_CAPI             TYEnterDeveloperMode      (TY_DEV_HANDLE hDevice);
 
+TY_CAPI             TYGetDeviceInfo           (TY_DEV_HANDLE hDevice, TY_DEVICE_BASE_INFO* info);
 TY_CAPI             TYGetComponentIDs         (TY_DEV_HANDLE hDevice, int32_t* componentIDs);
 TY_CAPI             TYGetEnabledComponents    (TY_DEV_HANDLE hDevice, int32_t* componentIDs);
 TY_CAPI             TYEnableComponents        (TY_DEV_HANDLE hDevice, int32_t componentIDs);
@@ -968,6 +1059,7 @@ TY_CAPI             TYStopCapture             (TY_DEV_HANDLE hDevice);
 TY_CAPI             TYIsCapturing             (TY_DEV_HANDLE hDevice, bool* isCapturing);
 TY_CAPI             TYSendSoftTrigger         (TY_DEV_HANDLE hDevice);
 TY_CAPI             TYRegisterCallback        (TY_DEV_HANDLE hDevice, TY_FRAME_CALLBACK callback, void* userdata);
+TY_CAPI             TYRegisterEventCallback   (TY_DEV_HANDLE hDevice, TY_EVENT_CALLBACK callback, void* userdata);
 TY_CAPI             TYFetchFrame              (TY_DEV_HANDLE hDevice, TY_FRAME_DATA* frame, int32_t timeout);
 
 TY_CAPI             TYGetFeatureInfo          (TY_DEV_HANDLE hDevice, TY_COMPONENT_ID componentID, TY_FEATURE_ID featureID, TY_FEATURE_INFO* featureInfo);
@@ -994,6 +1086,7 @@ TY_CAPI             TYDepthToWorld            (TY_DEV_HANDLE hDevice, const TY_V
 TY_CAPI             TYWorldToDepth            (TY_DEV_HANDLE hDevice, const TY_VECT_3F* world, TY_VECT_3F* depth, int32_t worldPaddingBytes, int32_t pointCount);
 
 TY_CAPI             TYRegisterWorldToColor    (TY_DEV_HANDLE hDevice, const TY_VECT_3F* world, int32_t worldPaddingBytes, int32_t pointCount, uint16_t* outDepthBuffer, int32_t bufferSize);
+TY_CAPI             TYUndistortImage          (const TY_CAMERA_INTRINSIC *cameraIntrinsic, const TY_CAMERA_DISTORTION* cameraDistortion,const TY_CAMERA_INTRINSIC *cameraNewIntrinsic,const TY_IMAGE_DATA *srcImage, TY_IMAGE_DATA *dstImage);
 
 
 #endif // TY_API_H_

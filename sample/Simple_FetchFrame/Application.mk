@@ -1,6 +1,6 @@
-APP_ABI    := armeabi
+APP_ABI    := armeabi arm64-v8a armeabi-v7a
 APP_STL    := gnustl_static
 APP_CFLAGS := --std=c++11
 APP_OPTIM  := debug
 
-NDK_TOOLCHAIN_VERSION := 4.8
+NDK_TOOLCHAIN_VERSION := 4.9

@@ -1,9 +1,30 @@
 #include "../common/common.hpp"
+#include <sys/time.h>  
 
 static char buffer[1024*1024];
 static int  n;
 static volatile bool exit_main;
 
+static int fps_counter = 0;
+static clock_t fps_tm = 0;
+
+int get_fps() {
+  const int kMaxCounter = 20;
+  struct timeval start;
+  fps_counter++;
+  if (fps_counter < kMaxCounter) {
+    return -1;
+  }
+
+  gettimeofday(&start, NULL);
+  int elapse = start.tv_sec * 1000 + start.tv_usec / 1000 - fps_tm;
+  int v = (int)(((float)fps_counter) / elapse * 1000);
+  gettimeofday(&start, NULL);
+  fps_tm = start.tv_sec * 1000 + start.tv_usec / 1000;
+
+  fps_counter = 0;
+  return v;
+}
 
 struct CallbackData {
     int             index;
@@ -16,12 +37,17 @@ void frameHandler(TY_FRAME_DATA* frame, void* userdata)
     CallbackData* pData = (CallbackData*) userdata;
     LOGD("=== Get frame %d", ++pData->index);
 
+    int ret = get_fps();
+	if (ret > 0)
+        LOGD("fps: %d\n", ret);
+
     for( int i = 0; i < frame->validCount; i++ ){
         // get & show depth image
         if(frame->image[i].componentID == TY_COMPONENT_DEPTH_CAM){
             cv::Mat depth(frame->image[i].height, frame->image[i].width
                     , CV_16U, frame->image[i].buffer);
             cv::Mat colorDepth = pData->render->Compute(depth);
+            //printf("compute depth\n");
         }
         // get & show left ir image
         if(frame->image[i].componentID == TY_COMPONENT_IR_CAM_LEFT){
@@ -40,10 +66,12 @@ void frameHandler(TY_FRAME_DATA* frame, void* userdata)
         }
         // get & show RGB
         if(frame->image[i].componentID == TY_COMPONENT_RGB_CAM){
+            /*  
             cv::Mat rgb(frame->image[i].height, frame->image[i].width
                     , CV_8UC3, frame->image[i].buffer);
             cv::Mat bgr;
             cv::cvtColor(rgb, bgr, cv::COLOR_RGB2BGR);
+            */
         }
     }
 
@@ -81,13 +109,14 @@ int main()
     }
 
     LOGD("=== Configure components, open depth cam");
-    int32_t componentIDs = TY_COMPONENT_DEPTH_CAM | TY_COMPONENT_IR_CAM_LEFT;
+    int32_t componentIDs = TY_COMPONENT_DEPTH_CAM | TY_COMPONENT_IR_CAM_LEFT | TY_COMPONENT_IR_CAM_RIGHT;
     ASSERT_OK( TYEnableComponents(hDevice, componentIDs) );
 
     LOGD("=== Configure feature, set resolution to 640x480.");
     LOGD("Note: DM460 resolution feature is in component TY_COMPONENT_DEVICE,");
     LOGD("      other device may lays in some other components.");
     int err = TYSetEnum(hDevice, TY_COMPONENT_DEPTH_CAM, TY_ENUM_IMAGE_MODE, TY_IMAGE_MODE_640x480);
+    printf("err: %d\n", err);
     ASSERT(err == TY_STATUS_OK || err == TY_STATUS_NOT_PERMITTED);
 
     LOGD("=== Prepare image buffer");
